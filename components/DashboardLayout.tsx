@@ -69,6 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const { user, role, logout } = useAuth();
   const [notifOpen, setNotifOpen] = React.useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const [notifications, setNotifications] = React.useState<UserNotification[]>([]);
 
   const loadNotifications = React.useCallback(() => {
@@ -80,6 +81,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   React.useEffect(() => {
     loadNotifications();
   }, [loadNotifications, pathname]);
+
+  React.useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -123,6 +128,90 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen bg-surface flex flex-col">
+      {/* Mobile Navigation Drawer */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-[100] lg:hidden flex">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Drawer Panel */}
+          <aside className="relative z-10 w-72 max-w-[80vw] bg-surface-container-low border-r border-[#e1bfb5]/40 h-full flex flex-col py-6 px-4 shadow-2xl animate-slide-up">
+            <div className="px-2 mb-6 flex items-center justify-between">
+              <Link href="/" onClick={() => setMobileMenuOpen(false)} className="flex items-center">
+                <Image
+                  src="/logo.png"
+                  alt="ShareBytes Logo"
+                  width={140}
+                  height={40}
+                  className="h-8 w-auto object-contain"
+                />
+              </Link>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-1.5 rounded-full hover:bg-surface-container text-on-surface-variant hover:text-on-surface transition-colors"
+                aria-label="Close menu"
+                id="close-mobile-menu"
+              >
+                <span className="material-symbols-outlined text-[22px]">close</span>
+              </button>
+            </div>
+
+            <nav className="flex-1 space-y-1 overflow-y-auto pr-1">
+              <div className="px-3 py-1 text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
+                {activeRole.replace('_', ' ')} Portal
+              </div>
+              {links.map((link, idx) => {
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={`mobile-${link.href}-${idx}`}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl text-xs font-bold transition-all ${
+                      isActive
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-on-surface-variant hover:bg-surface-container hover:text-on-surface'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[20px]">{link.icon}</span>
+                    <span>{link.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <div className="pt-4 border-t border-[#e1bfb5]/40 space-y-3 shrink-0">
+              <div className="bg-surface-container rounded-2xl p-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-secondary text-[20px]">eco</span>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase text-on-surface-variant">Role Persona</p>
+                    <p className="text-xs font-bold text-on-surface capitalize">{activeRole.replace('_', ' ')}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between px-2 text-xs font-bold text-on-surface-variant">
+                <span className="truncate max-w-[140px]">{user?.full_name || user?.email}</span>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    logout(() => router.push('/auth?tab=login'));
+                  }}
+                  className="text-primary hover:underline flex items-center gap-1 text-[11px]"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
+
       {/* Sidebar (Desktop) */}
       <aside className="fixed left-0 top-0 h-full w-64 bg-surface-container-low border-r border-[#e1bfb5]/40 z-50 hidden lg:flex flex-col py-6 px-4 shadow-sm">
         <div className="px-2 mb-8 flex items-center justify-between">
@@ -189,6 +278,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Top Sticky Header */}
         <header className="sticky top-0 z-40 bg-surface/90 backdrop-blur-xl border-b border-[#e1bfb5]/40 h-16 px-4 sm:px-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="lg:hidden p-2 rounded-xl text-on-surface hover:bg-surface-container transition-colors flex items-center justify-center shrink-0"
+              aria-label="Open navigation menu"
+              id="open-mobile-menu"
+            >
+              <span className="material-symbols-outlined text-[24px]">menu</span>
+            </button>
             <Link href="/" className="lg:hidden">
               <Image src="/logo.png" alt="Logo" width={110} height={32} className="h-7 w-auto" />
             </Link>

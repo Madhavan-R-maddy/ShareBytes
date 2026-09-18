@@ -52,6 +52,20 @@ export function parseSupabaseError(error: any, fallbackMessage: string = 'An une
     return FRIENDLY_NETWORK_ERROR;
   }
 
-  const msg = error?.message || error?.error_description || (typeof error === 'string' ? error : null);
-  return msg || fallbackMessage;
+  const rawMsg = error?.message || error?.error_description || (typeof error === 'string' ? error : null);
+  const code = error?.code || error?.error;
+  const msgLower = (rawMsg || '').toLowerCase();
+
+  // Explicit handling for unconfirmed email accounts
+  if (
+    code === 'email_not_confirmed' ||
+    msgLower.includes('email not confirmed') ||
+    msgLower.includes('confirm your email') ||
+    msgLower.includes('email link is invalid')
+  ) {
+    return 'Please confirm your email before logging in. Check your inbox for a confirmation link.';
+  }
+
+  return rawMsg || fallbackMessage;
 }
+

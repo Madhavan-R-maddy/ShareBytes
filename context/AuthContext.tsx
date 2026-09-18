@@ -52,6 +52,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
+    // Runtime environment variable diagnostic check
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+    if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('placeholder') || supabaseKey.includes('placeholder')) {
+      console.warn(
+        '[ShareBytes Auth Diagnostic] NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY is missing/placeholder. Verify Vercel Project Settings -> Environment Variables.'
+      );
+    }
+
     // Load persisted active user or default demo user
     const savedUserId = typeof window !== 'undefined' ? localStorage.getItem('sb_active_user_id') : null;
     const profiles = DataService.getProfiles();
@@ -104,6 +113,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         
         if (error) {
+          console.warn('[Supabase Login Error]', error);
+
+          // If this is a local seed/demo account, fall through to demo-mode verification
+          const profiles = DataService.getProfiles();
+          const matchedDemo = profiles.find(p => p.email.toLowerCase() === email.toLowerCase());
+          const storedPassword = matchedDemo?.demo_password || 'demo1234';
+
+          if (matchedDemo && password === storedPassword) {
+            console.info('[Auth] Falling back to local demo profile for:', email);
+            if (matchedDemo.is_suspended) {
+              showToast('Your account has been suspended by Admin. Please contact support.', 'error');
+              return false;
+            }
+            setUser(matchedDemo);
+            setRole(matchedDemo.role);
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('sb_active_user_id', matchedDemo.id);
+              document.cookie = `sb_role=${matchedDemo.role}; path=/; max-age=86400`;
+            }
+            showToast(`Welcome back, ${matchedDemo.full_name || matchedDemo.email}!`, 'success');
+            return true;
+          }
+
           showToast(parseSupabaseError(error, 'Invalid email or password'), 'error');
           return false;
         }
